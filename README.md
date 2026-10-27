@@ -67,8 +67,7 @@ never overwrites or deletes files there. Keep the JSON and the folder together w
 ## License note
 
 VST3 support uses [pedalboard](https://github.com/spotify/pedalboard), which is licensed under the
-GPL-3.0. If you distribute this program (or a build of it) with pedalboard included, the whole program
-has to be distributed under the GPL-3.0 too. Using it privately is not affected.
+GPL-3.0.
 
 ## Folder layout
 
