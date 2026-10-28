@@ -11,3 +11,6 @@ A bit more detailed README is located in the release .zip file.
 - Please provide information about what is not working / is bugged out
 - How to recreate that issue
 - A fix suggestion if you do know how to fix it.
+
+### Here is the current look of the program at version 0.3
+<img width="2512" height="1439" alt="image" src="https://github.com/user-attachments/assets/72e702e0-ba93-4f55-9b6e-97ce2b1116cd" />
