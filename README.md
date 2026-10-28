@@ -6,3 +6,8 @@
 - Desired features are very welcome!
 
 A bit more detailed README is located in the release .zip file. 
+
+# If you are reporting a bug.
+- Please provide information about what is not working / is bugged out
+- How to recreate that issue
+- A fix suggestion if you do know how to fix it.
