@@ -1,4 +1,7 @@
 # Tiny DAW
+*Goal is to create a fully functional DAW, which is easy to navigate through by anybody.*
+- Please report any bugs that do appear.
+- Desired features are very welcome!
 
 - File provided by AI.
 
