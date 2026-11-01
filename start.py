@@ -130,7 +130,7 @@ def download(commit, path, repo_path, sha):
 
 def update(check_only=False):
     """Bring the files up to date. Returns True if requirements.txt changed."""
-    print(f"Tiny DAW: looking for updated files on GitHub ({REPOSITORY})…")
+    print(f"Tiny DAW: looking for updated files on GitHub ({REPOSITORY})...")
     try:
         commit, files = remote_files()
     except (urllib.error.URLError, OSError, ValueError, KeyError, RuntimeError) as e:
@@ -174,7 +174,7 @@ def update(check_only=False):
 
 
 def install_requirements():
-    print("  requirements.txt changed: installing the Python packages it lists…")
+    print("  requirements.txt changed: installing the Python packages it lists...")
     result = subprocess.run([sys.executable, "-m", "pip", "install", "-r", os.path.join(HERE, "requirements.txt")])
     if result.returncode:
         print("  pip couldn't install them; Tiny DAW may not start. Try: python -m pip install -r requirements.txt")
