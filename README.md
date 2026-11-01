@@ -7,7 +7,7 @@
 - Please report any bugs that do appear.
 - Desired features are very welcome!
 
-A bit more detailed README is located in the release .zip file. 
+A more detailed guide is in [GUIDE.md](GUIDE.md) (it is also in the release .zip, as README.md). The program's files are all in this repository, so you can take individual ones; to run it, download the whole release .zip. 
 
 # If you are reporting a bug.
 - Please provide information about what is not working / is bugged out
