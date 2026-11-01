@@ -6,8 +6,17 @@ DirectSound or MME). MIDI is played by a simple built-in synth.
 
 ```
 pip install -r requirements.txt
-python main.py [project.json | audio and MIDI files...]
+python start.py [project.json | audio and MIDI files...]
 ```
+
+Or double-click **Start Tiny DAW.bat** (it uses Python 3.12 through the `py` launcher when it can).
+`start.py` keeps the program up to date file by file: before starting, it compares each file with
+the repository on GitHub (ExonSounds/Tiny-DAW, main branch) and downloads only the ones that changed,
+checking each against the repository's own fingerprint before putting it in place; files the
+repository dropped are removed. A file you changed yourself is kept (delete it to get the
+repository's again). Without a connection it starts with the files it has. `python start.py --check`
+only lists what would change; `--no-update` starts without looking; `python main.py` starts the
+program as it is, as before. What it knows about the files is in `.tinydaw-files.json`.
 
 VST3 plugins are hosted by Tiny DAW's own plugin host, a compiled module
 (`daw/audio/vst3host.cp312-win_amd64.pyd`, for 64-bit Python 3.12 on Windows) that comes with the
@@ -135,6 +144,8 @@ minutes; it puts the module into `daw/audio/`.
 
 ```
 main.py                    start the program
+start.py                   start the program with its files up to date (downloads changed files from GitHub)
+Start Tiny DAW.bat         double-click to run start.py with Python 3.12
 requirements.txt
 THIRD_PARTY_NOTICES.txt    the licences of the VST 3 SDK and pybind11 (in the built plugin host)
 DAW_icons/                 the playback buttons' icons (SVG, drawn in the skin's colours)
