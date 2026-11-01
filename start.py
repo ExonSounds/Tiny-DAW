@@ -9,8 +9,10 @@ they came from it. A file you changed here yourself is kept (and said so): delet
 repository's again. The repository's front page (README.md) and licence aren't the program's
 files; its GUIDE.md is this folder's README.md.
 
-.tinydaw-files.json (next to this file) remembers each file's fingerprint as it was last put here.
-Without it (a release .zip just unpacked) every file that differs is updated.
+.tinydaw-files.json (next to this file) remembers each file's fingerprint as it was last put here,
+and which state of the repository that was (its commit and time). Without it (a release .zip just
+unpacked) every file that differs is updated. GitHub's answers can be up to a minute old: an answer
+older than the state already here is ignored, so files never go back to an older version.
 
 No connection, or GitHub not answering: the program starts with the files it has. If
 requirements.txt changed, the Python packages it lists are installed (pip) before starting.
@@ -47,8 +49,10 @@ def fetch(url, accept="application/vnd.github+json"):
 
 
 def remote_files():
-    """(commit, {path here: fingerprint}) of the program's files on the repository's main branch."""
-    commit = json.loads(fetch(f"{API}/commits/{BRANCH}"))["sha"]
+    """(commit, its time, {path here: (fingerprint, path there)}) of the program's files on the repository's
+    main branch. The time is ISO 8601 in UTC ("2026-11-01T10:00:00Z"), so times compare as text."""
+    head = json.loads(fetch(f"{API}/commits/{BRANCH}"))
+    commit, date = head["sha"], head["commit"]["committer"]["date"]
     tree = json.loads(fetch(f"{API}/git/trees/{commit}?recursive=1"))
     if tree.get("truncated"):
         raise RuntimeError("the repository's file list came back incomplete")
@@ -58,7 +62,7 @@ def remote_files():
         if entry["type"] != "blob" or path in NOT_PROGRAM or not safe(path):
             continue
         files[RENAMED.get(path, path)] = (entry["sha"], path)
-    return commit, files
+    return commit, date, files
 
 
 def safe(path):
@@ -77,10 +81,11 @@ def local_fingerprint(path):
 
 
 def load_manifest():
+    """{"commit", "date", "files": {path: fingerprint}}, or None (nothing remembered yet)."""
     try:
         with open(MANIFEST, encoding="utf-8") as f:
             data = json.load(f)
-        return data if isinstance(data, dict) else None
+        return data if isinstance(data, dict) and isinstance(data.get("files"), dict) else None
     except (OSError, ValueError):
         return None
 
@@ -95,7 +100,7 @@ def save_manifest(manifest):
 
 
 def plan(files, manifest):
-    """(to download, to remove, kept: changed here) — paths here."""
+    """(to download, to remove, kept: changed here) — paths here. manifest: the remembered fingerprints."""
     download, kept = [], []
     for path, (sha, _) in sorted(files.items()):
         mine = local_fingerprint(path)
@@ -132,11 +137,16 @@ def update(check_only=False):
     """Bring the files up to date. Returns True if requirements.txt changed."""
     print(f"Tiny DAW: looking for updated files on GitHub ({REPOSITORY})...")
     try:
-        commit, files = remote_files()
+        commit, date, files = remote_files()
     except (urllib.error.URLError, OSError, ValueError, KeyError, RuntimeError) as e:
         print(f"  Couldn't look ({getattr(e, 'reason', e)}); starting with the files here.")
         return False
-    manifest = load_manifest()
+    remembered = load_manifest()
+    if remembered and str(remembered.get("date", "")) > date:
+        print("  GitHub answered with an older state than this folder already has (its answers can be a minute "
+              "old); starting with the files here.")
+        return False
+    manifest = remembered["files"] if remembered else None
     to_get, to_remove, kept = plan(files, manifest)
     for path in kept:
         print(f"  {path}: changed on this computer, so it is kept (delete it to get the repository's)")
@@ -165,7 +175,7 @@ def update(check_only=False):
     for path, (sha, _) in files.items():  # what is here now as the repository has it
         if local_fingerprint(path) == sha:
             manifest[path] = sha
-    save_manifest(manifest)
+    save_manifest({"commit": commit, "date": date, "files": manifest})
     if got:
         print(f"  {len(got)} file{'' if len(got) == 1 else 's'} updated.")
     elif not failed:
