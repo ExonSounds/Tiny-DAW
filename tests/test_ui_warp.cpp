@@ -6,6 +6,8 @@
 //   - exbit --tui: Warp… is in the clip's F2 menu; its dialog drawn as text, the markers' list moved by ←/→
 //     (by the grid), Del removing one, OK applying it.
 #include <cmath>
+#include <thread>
+#include <chrono>
 #include <fstream>
 #include <functional>
 #include <string>
@@ -14,6 +16,7 @@
 #include "audio/engine.h"
 #include "audio/sound_file.h"
 #include "check.h"
+#include "config.h"
 #include "core/util.h"
 #include "gfx/image.h"
 #include "model/history.h"
@@ -297,6 +300,40 @@ static void testMainWindowAndTui() {
     app.collectGarbage();
 }
 
+// Tap tempo while playing: the taps change the tempo at once, but a warped clip is rendered again only once the
+// tapping stops (a render on every tap, on the GUI thread, froze the window and the taps queued behind it)
+static void testTapWhilePlaying() {
+    ui::App& app = ui::App::get();
+    auto* w = new MainWindow();
+    w->askBeforeClosing = false;
+    int sr = w->engine.sr;
+    Project& p = w->project;
+    w->setTiming({120.0, {}, {}, {}});
+    auto t = p.addTrack(Kind::Audio);
+    ClipPtr c = makeAudioClip("Loop", clicks(100, 4.8), sr, sr);
+    c->track = t;
+    c = warping::rewarped(c, true, warp::Mode::Complex, warp::TRANSIENTS, 100, nullptr, 0, sr);
+    c->track = t;
+    p.addClip(c);
+    w->noteChanges();
+    w->engine.play();
+    auto data = c->data;
+    bool kept = true;
+    for (int i = 0; i < 4; i++) {
+        w->tap();
+        w->noteChanges();  // (the history timer, between taps)
+        kept = kept && c->data == data;
+        std::this_thread::sleep_for(std::chrono::milliseconds(250));
+    }
+    CHECK(kept && std::fabs(p.timing.bpm - 240) < 20);
+    std::this_thread::sleep_for(std::chrono::duration<double>(config::TAP_RESET_S));
+    w->noteChanges();  // (tapping over: rendered for the tapped tempo)
+    CHECK(c->data != data && std::llabs(c->frames() - (int64_t)(8 * 60.0 / p.timing.bpm * sr)) < sr / 50);
+    w->engine.stop();
+    w->close();
+    app.collectGarbage();
+}
+
 int main() {
     plat::initWithoutDisplay();
     ui::App::get().initHeadless();
@@ -305,5 +342,6 @@ int main() {
     settings::setPath(TMP + "/settings.json");
     testTimeline();
     testMainWindowAndTui();
+    testTapWhilePlaying();
     TEST_MAIN_END();
 }

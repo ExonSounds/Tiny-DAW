@@ -326,6 +326,8 @@ public:
     // a tap at `now` seconds; returns the tempo (BPM) once there are two taps, else 0
     double tap(double now);
     int count() const { return (int)taps_.size(); }  // the taps counted (Python's len(taps))
+    // are taps still coming at `now` (the last one less than TAP_RESET_S ago)?
+    bool tapping(double now) const;
 private:
     std::vector<double> taps_;
 };

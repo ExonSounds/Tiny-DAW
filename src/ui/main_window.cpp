@@ -579,7 +579,7 @@ void MainWindow::noteChanges() {
     // is one step), and once the clips a MIDI effects or sampler window changed are rendered again (the
     // change and how the clips then sound are one step). A curve being written by moving its control is
     // one step once the touch ends (automation_write.h).
-    if (history && !mouseHeld() && !rendersPending() && !automation::recorder().busy()) {
+    if (history && !mouseHeld() && !rendersPending() && !automation::recorder().busy() && !tapTempo.tapping(plat::now())) {
         retimeWarped();  // (a warped clip moved along tempo changes: its new audio and the move are one step)
         history->check(engine.sr);
     }
@@ -1398,7 +1398,7 @@ void MainWindow::setTiming(const TimingChange& c) {
                 timeline->prepareLive(clip);  // (swing too: it is in beats)
         }
     if (none || c.bpm || meter) {
-        retimeWarped();  // (warped audio follows the tempo)
+        if (!tapTempo.tapping(plat::now())) retimeWarped();  // (warped audio follows the tempo; tapping: once it stops)
         for (auto& clip : project.clips) {  // (a sampler warped, its LFO synced or sliced on a grid: so do its notes)
             TrackPtr track = std::atomic_load(&clip->track);
             SamplerPtr s = track ? std::atomic_load(&track->sampler) : nullptr;
