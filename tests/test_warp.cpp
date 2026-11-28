@@ -23,6 +23,7 @@
 #include "audio/fft.h"
 #include "audio/tempo_detect.h"
 #include "audio/warp.h"
+#include "audio/workers.h"
 #include "check.h"
 #include "core/util.h"
 #include "model/edits.h"
@@ -347,6 +348,51 @@ static ClipPtr warpedClip(const TrackPtr& t, AudioPtr src, int sr, double bpm, w
     return w;
 }
 
+// Tap tempo while playing one long Complex clip: each tap's retime renders on every core, as a render of its own
+// does (it ran on one core inside an idle pool's job: seconds a tap on the GUI thread, the window frozen)
+static void testTapWhilePlaying() {
+    Project p;
+    auto t = p.addTrack(Kind::Audio);
+    auto src = mix(30, SR);
+    TempoMapPtr map = std::make_shared<const TempoMap>(120.0);
+    clip_hooks::tempoMap = [&map] { return std::atomic_load(&map); };
+    ClipPtr c = warpedClip(t, src, SR, 120, warp::Mode::Complex, 0);
+    p.addClip(c);
+    auto t0 = std::chrono::steady_clock::now();
+    warp::rendered(job(src, SR, 120, warp::Mode::Complex, std::make_shared<const TempoMap>(117.0)));
+    double direct = since(t0);
+    audio::Engine e(p);
+    e.sr = SR;
+    e.offline = true;
+    e.play();
+    std::atomic<bool> done{false};
+    bool finite = true;
+    std::thread audioThread([&] {
+        std::vector<float> out(256 * 2);
+        while (!done) {
+            e.callback(nullptr, out.data(), 256);
+            for (float v : out) finite = finite && std::isfinite(v);
+            std::this_thread::sleep_for(std::chrono::milliseconds(5));  // (a device's pace: no spinning)
+        }
+    });
+    double slowest = 0;
+    int retimed = 0;
+    for (double bpm : {118.0, 121.0, 119.5, 122.0, 118.5, 120.5, 123.0, 119.0}) {
+        std::atomic_store(&map, std::make_shared<const TempoMap>(bpm));
+        t0 = std::chrono::steady_clock::now();
+        retimed += warping::retime(p, SR);
+        slowest = std::max(slowest, since(t0));
+    }
+    done = true;
+    audioThread.join();
+    e.stop();
+    clip_hooks::tempoMap = nullptr;
+    printf("tap tempo while playing: slowest retime %.2f s, a render on every core %.2f s (%d cores)\n", slowest, direct,
+           workers::availableCores());
+    CHECK(retimed == 8 && finite);
+    if (workers::availableCores() >= 4) CHECK(slowest < 2 * direct + 0.1);
+}
+
 static void testManyTempoChanges() {
     const int sr = 22050;
     Project p;
@@ -618,6 +664,7 @@ int main() {
     testMarkersWhilePlaying();
     testManyTempoChanges();
     testTwoHours();
+    testTapWhilePlaying();
     printf("all in %.1f s\n", since(t0));
     TEST_MAIN_END();
 }

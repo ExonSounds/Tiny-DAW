@@ -214,7 +214,9 @@ int retime(Project& p, int sr) {
         rewarp(w.ready[(size_t)i], framesOf(*c, w.sr), w.map, w.sr);
     };
     int threads = todo.size() >= 4 && !workers::inJob() ? workers::workersFor(workers::chosenCores()) : 0;
-    {
+    if (threads == 0) {  // (not as a pool's job: each clip's render then runs on every core itself, not on one)
+        for (int i = 0; i < (int)todo.size(); i++) job(&work, i);
+    } else {
         workers::Pool pool(threads, false);  // (as a render's: never outranking playback)
         pool.run((int)todo.size(), job, &work);
     }

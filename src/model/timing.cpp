@@ -648,6 +648,8 @@ void Timing::position(double seconds, int& bar, int& beat, int& part) const {
     part = (int)(frac * (thirds ? 3 : std::max(1, 16 / meter.beatUnit))) + 1;  // (16ths: 4 a quarter, 2 an 8th)
 }
 
+bool TapTempo::tapping(double now) const { return !taps_.empty() && now - taps_.back() <= config::TAP_RESET_S; }
+
 double TapTempo::tap(double now) {
     if (!taps_.empty() && now - taps_.back() > config::TAP_RESET_S) taps_.clear();
     taps_.push_back(now);
